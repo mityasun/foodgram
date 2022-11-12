@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'django_filters',
     'api.apps.ApiConfig',
     'users.apps.UsersConfig',
+    'recipes.apps.RecipesConfig',
 ]
 
 MIDDLEWARE = [
@@ -148,3 +149,6 @@ USERNAME: int = 150
 FIRST_NAME: int = 150
 LAST_NAME: int = 150
 PASSWORD: int = 150
+TAG_SLUG_NAME: int = 200
+TAG_COLOR: int = 7
+INGREDIENTS: int = 200
