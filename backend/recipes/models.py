@@ -1,7 +1,10 @@
-from .validators import ValidateSlug
+from django.contrib.auth import get_user_model
 from django.db import models
 
-from backend.settings import TAG_SLUG_NAME, TAG_COLOR, INGREDIENTS
+from backend.settings import TAG_SLUG_NAME, TAG_COLOR, INGREDIENTS, RECIPE_NAME
+from .validators import validate_amount, validate_cooking_time, validate_slug
+
+User = get_user_model()
 
 
 class Ingredients(models.Model):
@@ -13,29 +16,80 @@ class Ingredients(models.Model):
     REQUIRED_FIELDS = ['name', 'measurement_unit']
 
     class Meta:
-        ordering = ('name',)
+        ordering = ('-id',)
         verbose_name = 'ингредиенты'
         verbose_name_plural = 'ингредиент'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'measurement_unit'], name='unique ingredient'
+            )
+        ]
 
     def __str__(self):
         return self.name
 
 
-class Tags(models.Model, ValidateSlug):
+class Tags(models.Model):
     name = models.CharField(
         'Название тега', max_length=TAG_SLUG_NAME, unique=True
     )
-    color = models.CharField('Цвет', max_length=TAG_COLOR, null=True)
+    color = models.CharField('Цвет', max_length=TAG_COLOR, unique=True)
     slug = models.SlugField(
-        'Ссылка',
-        max_length=TAG_SLUG_NAME,
-        unique=True, null=True
+        'Ссылка', max_length=TAG_SLUG_NAME,
+        unique=True, validators=[validate_slug]
     )
 
+    REQUIRED_FIELDS = ['name', 'color', 'slug']
+
     class Meta:
-        ordering = ('name',)
+        ordering = ('-id',)
         verbose_name = 'тэг'
         verbose_name_plural = 'теги'
 
     def __str__(self):
         return self.name
+
+
+class Recipes(models.Model):
+    name = models.CharField('Название рецепта', max_length=RECIPE_NAME)
+    text = models.TextField('Описание')
+    image = models.ImageField('Картинка', upload_to='recipes/%Y/%m/%d/')
+    cooking_time = models.PositiveSmallIntegerField(
+        'Время приготовления', validators=[validate_cooking_time]
+    )
+    tags = models.ManyToManyField(Tags, verbose_name='теги')
+    ingredients = models.ManyToManyField(
+        Ingredients, through='IngredientInRecipe', verbose_name='Ингредиенты'
+    )
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, verbose_name='Автор'
+    )
+
+    REQUIRED_FIELDS = [
+        'name', 'text', 'image', 'cooking_time', 'tags', 'ingredients', 'author'
+    ]
+
+    class Meta:
+        ordering = ('-id',)
+        verbose_name = 'рецепт'
+        verbose_name_plural = 'рецепты'
+
+    def __str__(self):
+        return self.name
+
+
+class IngredientInRecipe(models.Model):
+    ingredient = models.ForeignKey(
+        Ingredients, on_delete=models.CASCADE, verbose_name='Ингредиент'
+    )
+    recipe = models.ForeignKey(
+        Recipes, on_delete=models.CASCADE, verbose_name='Рецепт'
+    )
+    amount = models.PositiveSmallIntegerField(
+        'Количество', validators=[validate_amount]
+    )
+
+    class Meta:
+        ordering = ('-id',)
+        verbose_name = 'Количество ингредиента'
+        verbose_name_plural = 'Количество ингредиентов'

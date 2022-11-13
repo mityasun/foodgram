@@ -1,20 +1,32 @@
 from django.contrib import admin
 
-from .models import Tags, Ingredients
+from .models import Ingredients, Recipes, Tags
 
 
-class RecipesAdmin(admin.ModelAdmin):
-    list_display = ('name', 'color', 'slug')
-    search_fields = ('name', 'color', 'slug')
-    list_filter = ('name', 'color', 'slug')
+class TagsAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'color', 'slug')
+    search_fields = ('id', 'name', 'color', 'slug')
+    list_filter = ('name', 'color')
     prepopulated_fields = {'slug': ('name',)}
 
 
 class IngredientsAdmin(admin.ModelAdmin):
-    list_display = ('name', 'measurement_unit')
-    search_fields = ('name', 'measurement_unit')
-    list_filter = ('name', 'measurement_unit')
+    list_display = ('id', 'name', 'measurement_unit')
+    search_fields = ('id', 'name')
+    list_filter = ('measurement_unit',)
 
 
-admin.site.register(Tags, RecipesAdmin)
+class IngredientAmount(admin.TabularInline):
+    model = Recipes.ingredients.through
+
+
+class RecipesAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'author')
+    search_fields = ('id', 'name', 'tags', 'ingredients')
+    list_filter = ('tags', 'author')
+    inlines = [IngredientAmount]
+
+
+admin.site.register(Tags, TagsAdmin)
 admin.site.register(Ingredients, IngredientsAdmin)
+admin.site.register(Recipes, RecipesAdmin)
