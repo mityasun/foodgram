@@ -130,6 +130,9 @@ class IngredientInRecipeSerializer(serializers.ModelSerializer):
     measurement_unit = serializers.ReadOnlyField(
         source='ingredient.measurement_unit'
     )
+    # amount = serializers.IntegerField(
+    #     required=True, validators=validate_amount
+    # )
 
     class Meta:
         model = IngredientInRecipe
@@ -180,8 +183,8 @@ class RecipesSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     'Ингредиенты в рецепте не должны повторяться'
                 )
+            validate_amount(int(ingredient_item['amount']))
             ingredient_list.append(ingredient)
-            validate_amount(ingredient_item['amount'])
         data['ingredients'] = ingredients
         return data
 
