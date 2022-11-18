@@ -16,8 +16,37 @@ class User(AbstractUser, ValidateUsername):
     REQUIRED_FIELDS = ['email', 'first_name', 'last_name', 'password']
 
     class Meta:
+        ordering = ('id',)
         verbose_name = 'пользователь'
         verbose_name_plural = 'пользователи'
 
     def __str__(self):
         return self.username
+
+
+class Subscribe(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='follower',
+        verbose_name='Подписчик'
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='following',
+        verbose_name='Автор'
+    )
+
+    class Meta:
+        ordering = ('id',)
+        verbose_name = 'подписчик'
+        verbose_name_plural = 'подписчики'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'author'], name='unique subscribe'
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.user.username}, {self.following.username}'

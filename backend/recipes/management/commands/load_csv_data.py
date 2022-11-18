@@ -3,24 +3,33 @@ from csv import DictReader
 
 from django.core.management import BaseCommand
 
-from recipes.models import Ingredients
+from recipes.models import Ingredients, Tags
 
 
 def import_csv_data():
     start_time = datetime.datetime.now()
 
     csv_files = (
-        (Ingredients, '../data/ingredients.csv'),
+        (Tags, 'recipes/management/data/tags.csv'),
+        (Ingredients, 'recipes/management/data/ingredients.csv')
     )
 
     for model, file in csv_files:
         print(f"Загрузка данных таблицы {file} началась.")
         for row in DictReader(open(file, encoding='utf-8')):
-            data = model(
-                name=row['name'],
-                measurement_unit=row['measurement_unit']
-            )
-            data.save()
+            if file == 'recipes/management/data/tags.csv':
+                data = model(
+                    name=row['name'],
+                    color=row['color'],
+                    slug=row['slug']
+                )
+                data.save()
+            elif file == 'recipes/management/data/ingredients.csv':
+                data = model(
+                    name=row['name'],
+                    measurement_unit=row['measurement_unit']
+                )
+                data.save()
         print(
             f"Загрузка данных таблицы {file} завершена успешно.")
 

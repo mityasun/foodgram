@@ -1,3 +1,4 @@
+from colorfield.fields import ColorField
 from django.contrib.auth import get_user_model
 from django.db import models
 
@@ -9,14 +10,14 @@ User = get_user_model()
 
 class Ingredients(models.Model):
     name = models.CharField(
-        'Название', max_length=INGREDIENTS, unique=True, db_index=True
+        'Название', max_length=INGREDIENTS, db_index=True
     )
     measurement_unit = models.CharField('Ед. измерения', max_length=INGREDIENTS)
 
     REQUIRED_FIELDS = ['name', 'measurement_unit']
 
     class Meta:
-        ordering = ('-id',)
+        ordering = ('id',)
         verbose_name = 'ингредиенты'
         verbose_name_plural = 'ингредиент'
         constraints = [
@@ -33,7 +34,7 @@ class Tags(models.Model):
     name = models.CharField(
         'Название тега', max_length=TAG_SLUG_NAME, unique=True
     )
-    color = models.CharField('Цвет', max_length=TAG_COLOR, unique=True)
+    color = ColorField('Цвет', format='hex', max_length=TAG_COLOR, unique=True)
     slug = models.SlugField(
         'Ссылка', max_length=TAG_SLUG_NAME,
         unique=True, validators=[validate_slug]
@@ -42,7 +43,7 @@ class Tags(models.Model):
     REQUIRED_FIELDS = ['name', 'color', 'slug']
 
     class Meta:
-        ordering = ('-id',)
+        ordering = ('id',)
         verbose_name = 'тэг'
         verbose_name_plural = 'теги'
 
@@ -93,3 +94,32 @@ class IngredientInRecipe(models.Model):
         ordering = ('-id',)
         verbose_name = 'Количество ингредиента'
         verbose_name_plural = 'Количество ингредиентов'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['ingredient', 'recipe'],
+                name='unique ingredient in recipe'
+            )
+        ]
+
+
+class Favorite(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, verbose_name='пользователь'
+    )
+    recipe = models.ForeignKey(
+        Recipes, on_delete=models.CASCADE,
+        related_name='favorites', verbose_name='Рецепт'
+    )
+
+    class Meta:
+        ordering = ('-id',)
+        verbose_name = 'Избранное'
+        verbose_name_plural = 'Избранное'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'recipe'], name='unique favorite'
+            )
+        ]
+
+    def __str__(self):
+        return f'Пользователь:{self.user.username}, рецепт: {self.recipe.name}'

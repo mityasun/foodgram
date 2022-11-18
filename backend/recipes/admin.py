@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Ingredients, Recipes, Tags
+from .models import Ingredients, Favorite, Recipes, Tags
 
 
 class TagsAdmin(admin.ModelAdmin):
@@ -27,6 +27,13 @@ class RecipesAdmin(admin.ModelAdmin):
     inlines = [IngredientAmount]
 
 
+class FavoriteAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'recipe')
+    search_fields = ('user', 'recipe')
+    list_filter = ('recipe',)
+
+
 admin.site.register(Tags, TagsAdmin)
 admin.site.register(Ingredients, IngredientsAdmin)
 admin.site.register(Recipes, RecipesAdmin)
+admin.site.register(Favorite, FavoriteAdmin)
