@@ -145,6 +145,7 @@ class RecipesSerializer(serializers.ModelSerializer):
         source='ingredientinrecipe_set', many=True, read_only=True
     )
     is_favorited = serializers.SerializerMethodField()
+    is_in_shopping_cart = serializers.SerializerMethodField()
     name = serializers.CharField(required=True, max_length=RECIPE_NAME)
     image = Base64ImageField(
         max_length=None, required=True,
@@ -158,8 +159,8 @@ class RecipesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipes
         fields = (
-            'id', 'tags', 'author', 'ingredients', 'is_favorited', 'name',
-            'image', 'text', 'cooking_time'
+            'id', 'tags', 'author', 'ingredients', 'is_favorited', 
+            'is_in_shopping_cart', 'name', 'image', 'text', 'cooking_time'
         )
 
     def validate(self, data):
@@ -230,3 +231,11 @@ class RecipesSerializer(serializers.ModelSerializer):
         if user.is_anonymous:
             return False
         return Recipes.objects.filter(favorites__user=user, id=obj.id).exists()
+
+    def get_is_in_shopping_cart(self, obj):
+        """Получаем статус списка покупок"""
+
+        user = self.context.get('request').user
+        if user.is_anonymous:
+            return False
+        return Recipes.objects.filter(cart__user=user, id=obj.id).exists()

@@ -12,7 +12,7 @@ from api.permissions import IsAdminAuthorOrReadOnly, IsAdminOrReadOnly
 from api.serializers import (CustomUserSerializer, IngredientsSerializer,
                              RecipesSerializer, ShortSerializer,
                              SubscribeSerializer, TagsSerializer)
-from recipes.models import Favorite, Ingredients, Recipes, Tags
+from recipes.models import Cart, Favorite, Ingredients, Recipes, Tags
 from users.models import Subscribe
 
 User = get_user_model()
@@ -156,3 +156,61 @@ class RecipesViewSet(mixins.ListModelMixin,
             {'errors': 'Вы уже удалили рецепт из избранного'},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    @action(
+        methods=['post', 'delete'],
+        detail=True,
+        permission_classes=[IsAuthenticated]
+    )
+    def shopping_cart(self, request, pk):
+        """Функция добавления и удаления рецептов в список покупок."""
+
+        user = request.user
+        favorite_obj = Cart.objects.filter(user=user, recipe=pk)
+
+        if request.method == 'POST':
+            if favorite_obj.exists():
+                return Response(
+                    {'errors': 'Рецепт уже добавлен в список покупок'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            recipe = get_object_or_404(Recipes, id=pk)
+            Cart.objects.create(user=user, recipe=recipe)
+            serializer = ShortSerializer(recipe)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        if favorite_obj.exists():
+            favorite_obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {'errors': 'Вы уже удалили рецепт из списка покупок'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    @action(
+        methods=['get'],
+        detail=False,
+        permission_classes=[IsAuthenticated]
+    )
+    def download_shopping_cart(request):
+        """Скачать список покупок в pdf"""
+
+        pass
+        # doc = SimpleDocTemplate("/tmp/somefilename.pdf")
+        # styles = getSampleStyleSheet()
+        # Story = [Spacer(1,2*inch)]
+        # style = styles["Normal"]
+        # for i in range(100):
+        # bogustext = ("This is Paragraph number %s.  " % i) * 20
+        # p = Paragraph(bogustext, style)
+        # Story.append(p)
+        # Story.append(Spacer(1,0.2*inch))
+        # doc.build(Story)
+
+        # fs = FileSystemStorage("/tmp")
+        # with fs.open("somefilename.pdf") as pdf:
+        #     response = HttpResponse(pdf, content_type='application/pdf')
+        #     response['Content-Disposition'] = 'attachment; filename="somefilename.pdf"'
+        #     return response
+
+        # return response
