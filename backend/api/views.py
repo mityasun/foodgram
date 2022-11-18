@@ -1,18 +1,18 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
-from rest_framework import mixins, viewsets, status
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from api.filters import IngredientsFilter, TagsAuthorFilterSet
-from api.permissions import IsAdminOrReadOnly, IsAdminAuthorOrReadOnly
-from api.serializers import (TagsSerializer, IngredientsSerializer,
-                             RecipesSerializer, SubscribeSerializer,
-                             CustomUserSerializer, ShortSerializer)
-from recipes.models import Tags, Ingredients, Recipes, Favorite
+from api.permissions import IsAdminAuthorOrReadOnly, IsAdminOrReadOnly
+from api.serializers import (CustomUserSerializer, IngredientsSerializer,
+                             RecipesSerializer, ShortSerializer,
+                             SubscribeSerializer, TagsSerializer)
+from recipes.models import Favorite, Ingredients, Recipes, Tags
 from users.models import Subscribe
 
 User = get_user_model()
@@ -27,17 +27,19 @@ class CustomUserViewSet(UserViewSet):
     pagination_class = LimitOffsetPagination
 
     @action(
-        methods=['get'], detail=False, permission_classes=[IsAuthenticated]
+        methods=['get'], detail=False,
+        permission_classes=[IsAuthenticated],
+        pagination_class=LimitOffsetPagination
     )
     def subscriptions(self, request):
         """Получить подписки пользователя"""
 
-        user = request.user
         serializer = SubscribeSerializer(
-            Subscribe.objects.filter(user=user),
-            many=True, context={'request': request}
+            self.paginate_queryset(
+                Subscribe.objects.filter(user=request.user)
+            ), many=True, context={'request': request}
         )
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return self.get_paginated_response(serializer.data)
 
     @action(
         methods=['post', 'delete'],
@@ -151,6 +153,6 @@ class RecipesViewSet(mixins.ListModelMixin,
             favorite_obj.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(
-            {'errors': f'Вы уже удалили рецепт из избранного'},
+            {'errors': 'Вы уже удалили рецепт из избранного'},
             status=status.HTTP_400_BAD_REQUEST
         )

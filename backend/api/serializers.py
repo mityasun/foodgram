@@ -5,11 +5,10 @@ from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
-from backend.settings import (RECIPE_NAME, USERNAME, EMAIL, FIRST_NAME,
-                              LAST_NAME, PASSWORD)
-from recipes.models import (Tags, Ingredients, Recipes, IngredientInRecipe,
-                            Favorite)
-from recipes.validators import validate_cooking_time, validate_amount
+from backend.settings import (EMAIL, FIRST_NAME, LAST_NAME, PASSWORD,
+                              RECIPE_NAME, USERNAME)
+from recipes.models import IngredientInRecipe, Ingredients, Recipes, Tags
+from recipes.validators import validate_amount, validate_cooking_time
 from users.models import Subscribe
 from users.validators import ValidateUsername
 

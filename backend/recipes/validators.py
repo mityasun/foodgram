@@ -19,7 +19,7 @@ def validate_cooking_time(cooking_time):
     """Валидатор времени приготовления."""
     if cooking_time < 1:
         raise ValidationError(
-            f'Время приготовления не может быть меньше 1 мин.'
+            'Время приготовления не может быть меньше 1 мин.'
         )
     return cooking_time
 
@@ -29,6 +29,6 @@ def validate_amount(amount):
 
     if amount < 1:
         raise ValidationError(
-            f'Количество ингредиента не может быть меньше одного.'
+            'Количество ингредиента не может быть меньше одного.'
         )
     return amount

@@ -1,7 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from backend.settings import EMAIL, FIRST_NAME, LAST_NAME, USERNAME, PASSWORD
+from backend.settings import EMAIL, FIRST_NAME, LAST_NAME, PASSWORD, USERNAME
+
 from .validators import ValidateUsername
 
 
@@ -49,4 +50,6 @@ class Subscribe(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.user.username}, {self.following.username}'
+        return (
+            f'Подписчик: {self.user.username}, Автор: {self.author.username}'
+        )

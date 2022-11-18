@@ -2,7 +2,8 @@ from colorfield.fields import ColorField
 from django.contrib.auth import get_user_model
 from django.db import models
 
-from backend.settings import TAG_SLUG_NAME, TAG_COLOR, INGREDIENTS, RECIPE_NAME
+from backend.settings import INGREDIENTS, RECIPE_NAME, TAG_COLOR, TAG_SLUG_NAME
+
 from .validators import validate_amount, validate_cooking_time, validate_slug
 
 User = get_user_model()
@@ -12,7 +13,9 @@ class Ingredients(models.Model):
     name = models.CharField(
         'Название', max_length=INGREDIENTS, db_index=True
     )
-    measurement_unit = models.CharField('Ед. измерения', max_length=INGREDIENTS)
+    measurement_unit = models.CharField(
+        'Ед. измерения', max_length=INGREDIENTS
+    )
 
     REQUIRED_FIELDS = ['name', 'measurement_unit']
 
@@ -67,7 +70,8 @@ class Recipes(models.Model):
     )
 
     REQUIRED_FIELDS = [
-        'name', 'text', 'image', 'cooking_time', 'tags', 'ingredients', 'author'
+        'name', 'text', 'image', 'cooking_time',
+        'tags', 'ingredients', 'author'
     ]
 
     class Meta:
