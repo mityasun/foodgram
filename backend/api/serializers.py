@@ -233,7 +233,9 @@ class RecipesSerializer(serializers.ModelSerializer):
         user = self.context.get('request').user
         if user.is_anonymous:
             return False
-        return Recipes.objects.filter(favorites__user=user, id=obj.id).exists()
+        return Recipes.objects.filter(
+            favorite_related__user=user, id=obj.id
+        ).exists()
 
     def get_is_in_shopping_cart(self, obj):
         """Получаем статус списка покупок"""
@@ -241,4 +243,6 @@ class RecipesSerializer(serializers.ModelSerializer):
         user = self.context.get('request').user
         if user.is_anonymous:
             return False
-        return Recipes.objects.filter(cart__user=user, id=obj.id).exists()
+        return Recipes.objects.filter(
+            cart_related__user=user, id=obj.id
+        ).exists()
