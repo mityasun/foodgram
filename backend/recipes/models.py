@@ -141,7 +141,7 @@ class BaseModelFavoriteCart(models.Model):
 class Favorite(BaseModelFavoriteCart):
     """Модель избранного"""
 
-    class Meta:
+    class Meta(BaseModelFavoriteCart.Meta):
         verbose_name = 'Избранное'
         verbose_name_plural = 'Избранное'
 
@@ -149,6 +149,6 @@ class Favorite(BaseModelFavoriteCart):
 class Cart(BaseModelFavoriteCart):
     """Модель списка покупок"""
 
-    class Meta:
+    class Meta(BaseModelFavoriteCart.Meta):
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Список покупок'
