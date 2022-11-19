@@ -1,6 +1,12 @@
+from io import BytesIO
+
 from django.contrib.auth import get_user_model
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
@@ -12,7 +18,8 @@ from api.permissions import IsAdminAuthorOrReadOnly, IsAdminOrReadOnly
 from api.serializers import (CustomUserSerializer, IngredientsSerializer,
                              RecipesSerializer, ShortSerializer,
                              SubscribeSerializer, TagsSerializer)
-from recipes.models import Cart, Favorite, Ingredients, Recipes, Tags
+from recipes.models import (Cart, Favorite, IngredientInRecipe, Ingredients,
+                            Recipes, Tags)
 from users.models import Subscribe
 
 User = get_user_model()
@@ -130,8 +137,7 @@ class RecipesViewSet(mixins.ListModelMixin,
 
     @action(
         methods=['post', 'delete'],
-        detail=True,
-        permission_classes=[IsAuthenticated]
+        detail=True, permission_classes=[IsAuthenticated]
     )
     def favorite(self, request, pk):
         """Функция добавления и удаления из избранного."""
@@ -159,8 +165,7 @@ class RecipesViewSet(mixins.ListModelMixin,
 
     @action(
         methods=['post', 'delete'],
-        detail=True,
-        permission_classes=[IsAuthenticated]
+        detail=True, permission_classes=[IsAuthenticated]
     )
     def shopping_cart(self, request, pk):
         """Функция добавления и удаления рецептов в список покупок."""
@@ -188,29 +193,63 @@ class RecipesViewSet(mixins.ListModelMixin,
         )
 
     @action(
-        methods=['get'],
-        detail=False,
-        permission_classes=[IsAuthenticated]
+        methods=['get'], detail=False, permission_classes=[IsAuthenticated]
     )
-    def download_shopping_cart(request):
+    def download_shopping_cart(self, request):
         """Скачать список покупок в pdf"""
 
-        pass
-        # doc = SimpleDocTemplate("/tmp/somefilename.pdf")
-        # styles = getSampleStyleSheet()
-        # Story = [Spacer(1,2*inch)]
-        # style = styles["Normal"]
-        # for i in range(100):
-        # bogustext = ("This is Paragraph number %s.  " % i) * 20
-        # p = Paragraph(bogustext, style)
-        # Story.append(p)
-        # Story.append(Spacer(1,0.2*inch))
-        # doc.build(Story)
+        ingredients = IngredientInRecipe.objects.filter(
+            recipe__cart_related__user=request.user).values_list(
+            'ingredient__name', 'amount', 'ingredient__measurement_unit',
+            'recipe__name'
+        )
 
-        # fs = FileSystemStorage("/tmp")
-        # with fs.open("somefilename.pdf") as pdf:
-        #     response = HttpResponse(pdf, content_type='application/pdf')
-        #     response['Content-Disposition'] = 'attachment; filename="somefilename.pdf"'
-        #     return response
+        if ingredients:
+            ingredient_dict = {}
+            for ingredient_name, amount, unit, recipe_name in ingredients:
+                if ingredient_name not in ingredient_dict:
+                    ingredient_dict[ingredient_name] = {
+                        'amount': amount,
+                        'measurement_unit': unit,
+                        'recipe_name': recipe_name
+                    }
+                ingredient_dict[ingredient_name]['amount'] += amount
 
-        # return response
+            response = HttpResponse(content_type='application/pdf')
+            response['Content-Disposition'] = (
+                'inline; filename="shopping_list.pdf"'
+            )
+
+            buffer = BytesIO()
+            page = canvas.Canvas(buffer)
+
+            pdfmetrics.registerFont(
+                TTFont(
+                    'Roboto-Regular',
+                    'recipes/static/fonts/Roboto-Regular.ttf', 'UTF-8'
+                )
+            )
+            page.setFont('Roboto-Regular', size=24)
+            page.drawString(150, 800, 'Рецепты с сайта Foodgram')
+            page.setFont('Roboto-Regular', size=20)
+            page.drawString(130, 750, 'Список ингредиентов для рецептов')
+            page.setFont('Roboto-Regular', size=16)
+            height = 700
+            for ingredient_name, info in ingredient_dict.items():
+                page.drawString(
+                    50, height, f'• {ingredient_name} - {info["amount"]} '
+                                f'{info["measurement_unit"]} для рецепта: '
+                                f'{info["recipe_name"]}.'
+                )
+                height -= 20
+
+            page.showPage()
+            page.save()
+            pdf = buffer.getvalue()
+            buffer.close()
+            response.write(pdf)
+            return response
+        return Response(
+            {'errors': 'Нет рецептов в списке покупок'},
+            status=status.HTTP_400_BAD_REQUEST
+        )

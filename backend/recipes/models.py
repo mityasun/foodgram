@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 
 from backend.settings import INGREDIENTS, RECIPE_NAME, TAG_COLOR, TAG_SLUG_NAME
+
 from .validators import validate_amount, validate_cooking_time, validate_slug
 
 User = get_user_model()
@@ -130,7 +131,7 @@ class BaseModelFavoriteCart(models.Model):
         ordering = ('-id',)
         constraints = [
             models.UniqueConstraint(
-                fields=['user', 'recipe'], name='%(app_label)s_%(class)s_unique'
+                fields=['user', 'recipe'], name='%(class)s_unique'
             )
         ]
 
