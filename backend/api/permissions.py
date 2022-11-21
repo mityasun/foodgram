@@ -20,10 +20,3 @@ class IsAdminAuthorOrReadOnly(permissions.BasePermission):
         return (request.method in permissions.SAFE_METHODS
                 or request.user.is_superuser or obj.author == request.user
                 )
-
-
-class IsAdmin(permissions.BasePermission):
-    """Проверка, что админ или суперюзер"""
-
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.is_superuser

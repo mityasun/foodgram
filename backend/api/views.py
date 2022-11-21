@@ -9,11 +9,11 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from api.filters import IngredientsFilter, TagsAuthorFilterSet
+from api.filters import IngredientsFilter, RecipesFilterSet
 from api.permissions import IsAdminAuthorOrReadOnly, IsAdminOrReadOnly
 from api.serializers import (CustomUserSerializer, IngredientsSerializer,
                              RecipesSerializer, ShortSerializer,
@@ -31,12 +31,12 @@ class CustomUserViewSet(UserViewSet):
     queryset = User.objects.all()
     serializer_class = CustomUserSerializer
     permission_classes = [IsAdminAuthorOrReadOnly]
-    pagination_class = LimitOffsetPagination
+    pagination_class = PageNumberPagination
 
     @action(
         methods=['get'], detail=False,
         permission_classes=[IsAuthenticated],
-        pagination_class=LimitOffsetPagination
+        pagination_class=PageNumberPagination
     )
     def subscriptions(self, request):
         """Получить подписки пользователя"""
@@ -121,13 +121,13 @@ class RecipesViewSet(mixins.ListModelMixin,
                      mixins.UpdateModelMixin,
                      mixins.DestroyModelMixin,
                      viewsets.GenericViewSet):
-    """Вьюсет для модели Recipes и Favorite"""
+    """Вьюсет для модели Recipes, Favorite и Cart"""
 
     queryset = Recipes.objects.all()
     serializer_class = RecipesSerializer
-    pagination_class = LimitOffsetPagination
+    pagination_class = PageNumberPagination
     permission_classes = [IsAdminAuthorOrReadOnly]
-    filter_class = TagsAuthorFilterSet
+    filter_class = RecipesFilterSet
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -135,62 +135,57 @@ class RecipesViewSet(mixins.ListModelMixin,
     def perform_destroy(self, instance):
         instance.delete()
 
+    def favorite_and_cart(self, request, pk, model, errors):
+        """Общая функция для Favorite и Cart для добавления и удаления"""
+
+        user = request.user
+        obj = model.objects.filter(user=user, recipe=pk)
+        if request.method == 'POST':
+            if obj.exists():
+                return Response(
+                    {'errors': errors.get('if_exists')},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            recipe = get_object_or_404(Recipes, id=pk)
+            model.objects.create(user=user, recipe=recipe)
+            return Response(
+                ShortSerializer(recipe).data, status=status.HTTP_201_CREATED
+            )
+        if obj.exists():
+            obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {'errors': errors.get('if_deleted')},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
     @action(
         methods=['post', 'delete'],
         detail=True, permission_classes=[IsAuthenticated]
     )
     def favorite(self, request, pk):
-        """Функция добавления и удаления из избранного."""
+        """Функция добавления и удаления избранного."""
 
-        user = request.user
-        favorite_obj = Favorite.objects.filter(user=user, recipe=pk)
+        errors = {
+            'if_exists': 'Рецепт уже добавлен в избранное',
+            'if_deleted': 'Вы уже удалили рецепт из избранного'
+        }
 
-        if request.method == 'POST':
-            if favorite_obj.exists():
-                return Response({'errors': 'Рецепт уже добавлен в избранное'},
-                                status=status.HTTP_400_BAD_REQUEST
-                                )
-            recipe = get_object_or_404(Recipes, id=pk)
-            Favorite.objects.create(user=user, recipe=recipe)
-            serializer = ShortSerializer(recipe)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        if favorite_obj.exists():
-            favorite_obj.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(
-            {'errors': 'Вы уже удалили рецепт из избранного'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return self.favorite_and_cart(request, pk, Favorite, errors)
 
     @action(
         methods=['post', 'delete'],
         detail=True, permission_classes=[IsAuthenticated]
     )
     def shopping_cart(self, request, pk):
-        """Функция добавления и удаления рецептов в список покупок."""
+        """Функция добавления и удаления рецептов в/из списка покупок."""
 
-        user = request.user
-        favorite_obj = Cart.objects.filter(user=user, recipe=pk)
+        errors = {
+            'if_exists': 'Рецепт уже добавлен в список покупок',
+            'if_deleted': 'Вы уже удалили рецепт из списка покупок'
+        }
 
-        if request.method == 'POST':
-            if favorite_obj.exists():
-                return Response(
-                    {'errors': 'Рецепт уже добавлен в список покупок'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            recipe = get_object_or_404(Recipes, id=pk)
-            Cart.objects.create(user=user, recipe=recipe)
-            serializer = ShortSerializer(recipe)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        if favorite_obj.exists():
-            favorite_obj.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(
-            {'errors': 'Вы уже удалили рецепт из списка покупок'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return self.favorite_and_cart(request, pk, Cart, errors)
 
     @action(
         methods=['get'], detail=False, permission_classes=[IsAuthenticated]
@@ -203,7 +198,6 @@ class RecipesViewSet(mixins.ListModelMixin,
             'ingredient__name', 'amount', 'ingredient__measurement_unit',
             'recipe__name'
         )
-
         if ingredients:
             ingredient_dict = {}
             for ingredient_name, amount, unit, recipe_name in ingredients:
@@ -213,7 +207,8 @@ class RecipesViewSet(mixins.ListModelMixin,
                         'measurement_unit': unit,
                         'recipe_name': recipe_name
                     }
-                ingredient_dict[ingredient_name]['amount'] += amount
+                else:
+                    ingredient_dict[ingredient_name]['amount'] += amount
 
             response = HttpResponse(content_type='application/pdf')
             response['Content-Disposition'] = (
@@ -249,6 +244,7 @@ class RecipesViewSet(mixins.ListModelMixin,
             buffer.close()
             response.write(pdf)
             return response
+
         return Response(
             {'errors': 'Нет рецептов в списке покупок'},
             status=status.HTTP_400_BAD_REQUEST

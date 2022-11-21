@@ -21,10 +21,15 @@ class IngredientAmount(admin.TabularInline):
 
 
 class RecipesAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'author')
+    list_display = ('id', 'name', 'author', 'get_favorites_count')
     search_fields = ('id', 'name', 'tags', 'ingredients')
-    list_filter = ('tags', 'author')
+    list_filter = ('name', 'tags', 'author')
     inlines = [IngredientAmount]
+
+    def get_favorites_count(self, obj):
+        return obj.favorite_related.count()
+
+    get_favorites_count.short_description = 'Добавили в избранное'
 
 
 class FavoriteAdmin(admin.ModelAdmin):
