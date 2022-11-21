@@ -130,9 +130,6 @@ class IngredientInRecipeSerializer(serializers.ModelSerializer):
     measurement_unit = serializers.ReadOnlyField(
         source='ingredient.measurement_unit'
     )
-    # amount = serializers.IntegerField(
-    #     required=True, validators=validate_amount
-    # )
 
     class Meta:
         model = IngredientInRecipe
@@ -162,7 +159,7 @@ class RecipesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipes
         fields = (
-            'id', 'tags', 'author', 'ingredients', 'is_favorited', 
+            'id', 'tags', 'author', 'ingredients', 'is_favorited',
             'is_in_shopping_cart', 'name', 'image', 'text', 'cooking_time'
         )
 
