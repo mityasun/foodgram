@@ -99,7 +99,7 @@ class IngredientsViewSet(
     queryset = Ingredients.objects.all()
     permission_classes = [IsAdminOrReadOnly]
     pagination_class = None
-    filter_backends = (IngredientsFilter,)
+    filter_backends = [IngredientsFilter]
 
 
 class TagsViewSet(

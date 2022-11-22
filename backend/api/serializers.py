@@ -7,7 +7,7 @@ from rest_framework.validators import UniqueValidator
 
 from backend.settings import (EMAIL, FIRST_NAME, LAST_NAME, PASSWORD,
                               RECIPE_NAME, USERNAME)
-from recipes.models import IngredientInRecipe, Ingredients, Recipes, Tags
+from recipes.models import IngredientInRecipe, Ingredients, Recipes, Tags, Cart, Favorite
 from recipes.validators import validate_amount, validate_cooking_time
 from users.models import Subscribe
 from users.validators import ValidateUsername
@@ -91,14 +91,13 @@ class SubscribeSerializer(serializers.ModelSerializer):
         ).exists()
 
     def get_recipes(self, obj):
-        """Получаем рецепты, на которые подписаны"""
+        """Получаем рецепты, на которые подписаны и ограничиваем по лимитам"""
 
-        request = self.context.get('request')
-        limit = request.GET.get('recipes_limit')
+        recipes_limit = self.context.get('request').GET.get('recipes_limit')
         queryset = Recipes.objects.filter(author=obj.author)
-        if limit:
-            queryset = queryset[:int(limit)]
-        return ShortSerializer(queryset, many=True).data
+        if recipes_limit:
+            queryset = queryset[:int(recipes_limit)]
+        return ShortSerializer(queryset).data
 
     def get_recipes_count(self, obj):
         """Считаем рецепты, на которые подписаны"""
@@ -188,12 +187,19 @@ class RecipesSerializer(serializers.ModelSerializer):
     def create_ingredients(self, ingredients, recipe):
         """Создаем связку ингредиентов для рецепта"""
 
-        for ingredient in ingredients:
+        for ingredient_item in ingredients:
             IngredientInRecipe.objects.create(
+                ingredient_id=ingredient_item['id'],
                 recipe=recipe,
-                ingredient_id=ingredient.get('id'),
-                amount=ingredient.get('amount'),
+                amount=ingredient_item['amount'],
             )
+
+        # for ingredient in ingredients:
+        #     IngredientInRecipe.objects.create(
+        #         recipe=recipe,
+        #         ingredient_id=ingredient.get('id'),
+        #         amount=ingredient.get('amount'),
+        #     )
 
     def create(self, validated_data):
         """Создаем рецепт"""
@@ -223,6 +229,18 @@ class RecipesSerializer(serializers.ModelSerializer):
         self.create_ingredients(validated_data.get('ingredients'), instance)
         instance.save()
         return instance
+
+    # def favorited_and_cart(self, value, obj):
+    #     user = self.context.get('request').user
+    #     if user.is_anonymous:
+    #         return False
+    #     return obj.objects.filter(recipe=value, user=user).exists()
+
+    # def get_is_favorited(self, value):
+    #     return self.favorited_and_cart(value, obj=Favorite)
+
+    # def get_is_in_shopping_cart(self, value):
+    #     return self.favorited_and_cart(value, obj=Cart)
 
     def get_is_favorited(self, obj):
         """Получаем статус избранного"""
