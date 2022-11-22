@@ -2,15 +2,15 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from drf_extra_fields.fields import Base64ImageField
-from recipes.models import IngredientInRecipe, Ingredients, Recipes, Tags
-from recipes.validators import validate_amount, validate_cooking_time
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from users.models import Subscribe
-from users.validators import ValidateUsername
 
 from backend.settings import (EMAIL, FIRST_NAME, LAST_NAME, PASSWORD,
                               RECIPE_NAME, USERNAME)
+from recipes.models import IngredientInRecipe, Ingredients, Recipes, Tags
+from recipes.validators import validate_amount, validate_cooking_time
+from users.models import Subscribe
+from users.validators import ValidateUsername
 
 User = get_user_model()
 
@@ -165,8 +165,6 @@ class RecipesSerializer(serializers.ModelSerializer):
     def validate(self, data):
         """Валидируем ингредиенты и теги"""
 
-        name = str(self.initial_data.get('name')).strip()
-
         ingredients = self.initial_data.get('ingredients')
         if not ingredients:
             raise serializers.ValidationError(
@@ -196,7 +194,6 @@ class RecipesSerializer(serializers.ModelSerializer):
                     {'tags': 'Теги в рецепте не должны повторяться'}
                 )
             tags_list.append(tag)
-        data['name'] = name.capitalize()
         data['ingredients'] = ingredients
         data['tags'] = tags
         return data

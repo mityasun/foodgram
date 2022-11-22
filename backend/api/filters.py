@@ -2,14 +2,18 @@ from django.contrib.auth import get_user_model
 from django_filters import NumberFilter
 from django_filters import rest_framework as filters
 from django_filters.rest_framework import FilterSet
-from recipes.models import Recipes
 from rest_framework.filters import SearchFilter
+
+from recipes.models import Recipes
 
 User = get_user_model()
 
 
 class IngredientsFilter(SearchFilter):
-    """Полнотекстовый поиск по ингредиентам"""
+    """
+    Полнотекстовый поиск по ингредиентам
+    !НО не сделал еще игнорирование регистра
+    """
 
     def get_search_fields(self, view, request):
         if request.query_params.get('name'):
