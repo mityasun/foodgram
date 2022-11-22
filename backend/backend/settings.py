@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
     'recipes.apps.RecipesConfig',
     'colorfield',
+    'isort',
 ]
 
 MIDDLEWARE = [
