@@ -2,15 +2,15 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from drf_extra_fields.fields import Base64ImageField
+from recipes.models import IngredientInRecipe, Ingredients, Recipes, Tags
+from recipes.validators import validate_amount, validate_cooking_time
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
+from users.models import Subscribe
+from users.validators import ValidateUsername
 
 from backend.settings import (EMAIL, FIRST_NAME, LAST_NAME, PASSWORD,
                               RECIPE_NAME, USERNAME)
-from recipes.models import IngredientInRecipe, Ingredients, Recipes, Tags, Cart, Favorite
-from recipes.validators import validate_amount, validate_cooking_time
-from users.models import Subscribe
-from users.validators import ValidateUsername
 
 User = get_user_model()
 
@@ -59,7 +59,7 @@ class CustomUserCreateSerializer(UserCreateSerializer, ValidateUsername):
 
 
 class ShortSerializer(serializers.ModelSerializer):
-    """Сериализатор короткого ответа для подписок и избранного"""
+    """Сериализатор короткого ответа рецептов для подписок и избранного"""
 
     class Meta:
         model = Recipes
@@ -93,11 +93,11 @@ class SubscribeSerializer(serializers.ModelSerializer):
     def get_recipes(self, obj):
         """Получаем рецепты, на которые подписаны и ограничиваем по лимитам"""
 
-        recipes_limit = self.context.get('request').GET.get('recipes_limit')
         queryset = Recipes.objects.filter(author=obj.author)
+        recipes_limit = self.context.get('request').GET.get('recipes_limit')
         if recipes_limit:
             queryset = queryset[:int(recipes_limit)]
-        return ShortSerializer(queryset).data
+        return ShortSerializer(queryset, many=True).data
 
     def get_recipes_count(self, obj):
         """Считаем рецепты, на которые подписаны"""
@@ -163,25 +163,42 @@ class RecipesSerializer(serializers.ModelSerializer):
         )
 
     def validate(self, data):
-        """Валидируем ингредиенты"""
+        """Валидируем ингредиенты и теги"""
+
+        name = str(self.initial_data.get('name')).strip()
 
         ingredients = self.initial_data.get('ingredients')
         if not ingredients:
             raise serializers.ValidationError(
-                'Нужен хотя бы один ингредиент для рецепта'
+                {'ingredients': 'Нужен хотя бы один ингредиент для рецепта'}
             )
-        ingredient_list = []
+        ingredients_list = []
         for ingredient_item in ingredients:
             ingredient = get_object_or_404(
                 Ingredients, id=ingredient_item['id']
             )
-            if ingredient in ingredient_list:
+            if ingredient in ingredients_list:
                 raise serializers.ValidationError(
-                    'Ингредиенты в рецепте не должны повторяться'
+                    {'ingredients': 'Ингредиенты не должны повторяться'}
                 )
             validate_amount(int(ingredient_item['amount']))
-            ingredient_list.append(ingredient)
+            ingredients_list.append(ingredient)
+        tags = self.initial_data.get('tags')
+        if not tags:
+            raise serializers.ValidationError(
+                {'tags': 'Нужен хотя бы один тэг для рецепта'}
+            )
+        tags_list = []
+        for tag_item in tags:
+            tag = get_object_or_404(Tags, id=tag_item)
+            if tag in tags_list:
+                raise serializers.ValidationError(
+                    {'tags': 'Теги в рецепте не должны повторяться'}
+                )
+            tags_list.append(tag)
+        data['name'] = name.capitalize()
         data['ingredients'] = ingredients
+        data['tags'] = tags
         return data
 
     def create_ingredients(self, ingredients, recipe):
@@ -194,53 +211,34 @@ class RecipesSerializer(serializers.ModelSerializer):
                 amount=ingredient_item['amount'],
             )
 
-        # for ingredient in ingredients:
-        #     IngredientInRecipe.objects.create(
-        #         recipe=recipe,
-        #         ingredient_id=ingredient.get('id'),
-        #         amount=ingredient.get('amount'),
-        #     )
-
     def create(self, validated_data):
         """Создаем рецепт"""
 
         image = validated_data.pop('image')
-        ingredients_data = validated_data.pop('ingredients')
+        ingredients = validated_data.pop('ingredients')
+        tags = validated_data.pop('tags')
         recipe = Recipes.objects.create(image=image, **validated_data)
-        tags_data = self.initial_data.get('tags')
-        recipe.tags.set(tags_data)
-        self.create_ingredients(ingredients_data, recipe)
+        recipe.tags.set(tags)
+        self.create_ingredients(ingredients, recipe)
         recipe.save()
         return recipe
 
-    def update(self, instance, validated_data):
+    def update(self, recipe, validated_data):
         """Обновляем рецепт"""
 
-        instance.image = validated_data.get('image', instance.image)
-        instance.name = validated_data.get('name', instance.name)
-        instance.text = validated_data.get('text', instance.text)
-        instance.cooking_time = validated_data.get(
-            'cooking_time', instance.cooking_time
+        recipe.image = validated_data.get('image', recipe.image)
+        recipe.name = validated_data.get('name', recipe.name)
+        recipe.text = validated_data.get('text', recipe.text)
+        recipe.cooking_time = validated_data.get(
+            'cooking_time', recipe.cooking_time
         )
-        instance.tags.clear()
-        tags_data = self.initial_data.get('tags')
-        instance.tags.set(tags_data)
-        IngredientInRecipe.objects.filter(recipe=instance).all().delete()
-        self.create_ingredients(validated_data.get('ingredients'), instance)
-        instance.save()
-        return instance
-
-    # def favorited_and_cart(self, value, obj):
-    #     user = self.context.get('request').user
-    #     if user.is_anonymous:
-    #         return False
-    #     return obj.objects.filter(recipe=value, user=user).exists()
-
-    # def get_is_favorited(self, value):
-    #     return self.favorited_and_cart(value, obj=Favorite)
-
-    # def get_is_in_shopping_cart(self, value):
-    #     return self.favorited_and_cart(value, obj=Cart)
+        tags = validated_data.get('tags')
+        recipe.tags.clear()
+        recipe.tags.set(tags)
+        recipe.ingredients.clear()
+        self.create_ingredients(validated_data.get('ingredients'), recipe)
+        recipe.save()
+        return recipe
 
     def get_is_favorited(self, obj):
         """Получаем статус избранного"""

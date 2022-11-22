@@ -5,7 +5,7 @@ services:
     volumes:
       - postgre_db:/var/lib/postgresql/data/
     env_file:
-      - ./.env
+      - .env
     container_name: foodgram_db
 
   backend:
