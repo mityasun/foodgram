@@ -1,22 +1,20 @@
 from colorfield.fields import ColorField
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.db import models
 
-from backend.settings import INGREDIENTS, RECIPE_NAME, TAG_COLOR, TAG_SLUG_NAME
+from users.models import User
 
 from .validators import validate_amount, validate_cooking_time, validate_slug
-
-User = get_user_model()
 
 
 class Ingredients(models.Model):
     """Модель ингредиентов"""
 
     name = models.CharField(
-        'Название', max_length=INGREDIENTS, db_index=True
+        'Название', max_length=settings.INGREDIENTS, db_index=True
     )
     measurement_unit = models.CharField(
-        'Ед. измерения', max_length=INGREDIENTS
+        'Ед. измерения', max_length=settings.INGREDIENTS
     )
 
     REQUIRED_FIELDS = ['name', 'measurement_unit']
@@ -39,11 +37,13 @@ class Tags(models.Model):
     """Модель тэгов"""
 
     name = models.CharField(
-        'Название тега', max_length=TAG_SLUG_NAME, unique=True
+        'Название тега', max_length=settings.TAG_SLUG_NAME, unique=True
     )
-    color = ColorField('Цвет', format='hex', max_length=TAG_COLOR, unique=True)
+    color = ColorField(
+        'Цвет', format='hex', max_length=settings.TAG_COLOR, unique=True
+    )
     slug = models.SlugField(
-        'Ссылка', max_length=TAG_SLUG_NAME,
+        'Ссылка', max_length=settings.TAG_SLUG_NAME,
         unique=True, validators=[validate_slug]
     )
 
@@ -61,7 +61,9 @@ class Tags(models.Model):
 class Recipes(models.Model):
     """Модель рецептов"""
 
-    name = models.CharField('Название рецепта', max_length=RECIPE_NAME)
+    name = models.CharField(
+        'Название рецепта', max_length=settings.RECIPE_NAME
+    )
     text = models.TextField('Описание')
     image = models.ImageField('Картинка', upload_to='recipes/%Y/%m/%d/')
     cooking_time = models.PositiveSmallIntegerField(
@@ -72,7 +74,8 @@ class Recipes(models.Model):
         Ingredients, through='IngredientInRecipe', verbose_name='Ингредиенты'
     )
     author = models.ForeignKey(
-        User, on_delete=models.CASCADE, verbose_name='Автор'
+        User, on_delete=models.CASCADE,
+        related_name='recipe_author', verbose_name='Автор'
     )
 
     REQUIRED_FIELDS = [

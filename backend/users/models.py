@@ -1,17 +1,18 @@
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-
-from backend.settings import EMAIL, FIRST_NAME, LAST_NAME, PASSWORD, USERNAME
 
 from .validators import ValidateUsername
 
 
 class User(AbstractUser, ValidateUsername):
-    email = models.EmailField('Почта', max_length=EMAIL, unique=True)
-    username = models.CharField('Никнэйм', max_length=USERNAME, unique=True)
-    first_name = models.CharField('Имя', max_length=FIRST_NAME)
-    last_name = models.CharField('Фамилия', max_length=LAST_NAME)
-    password = models.CharField('Пароль', max_length=PASSWORD)
+    email = models.EmailField('Почта', max_length=settings.EMAIL, unique=True)
+    username = models.CharField(
+        'Никнэйм', max_length=settings.USERNAME, unique=True
+    )
+    first_name = models.CharField('Имя', max_length=settings.FIRST_NAME)
+    last_name = models.CharField('Фамилия', max_length=settings.LAST_NAME)
+    password = models.CharField('Пароль', max_length=settings.PASSWORD)
 
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['email', 'first_name', 'last_name', 'password']
@@ -46,7 +47,11 @@ class Subscribe(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=['user', 'author'], name='unique subscribe'
-            )
+            ),
+            models.CheckConstraint(
+                check=~models.Q(user=models.F('author')),
+                name='cant subscribe to yourself',
+            ),
         ]
 
     def __str__(self):

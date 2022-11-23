@@ -1,17 +1,17 @@
 from io import BytesIO
 
-from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from rest_framework import mixins, status, viewsets
+from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from api.filters import IngredientsFilter, RecipesFilterSet
 from api.permissions import IsAdminAuthorOrReadOnly, IsAdminOrReadOnly
@@ -20,9 +20,7 @@ from api.serializers import (CustomUserSerializer, IngredientsSerializer,
                              SubscribeSerializer, TagsSerializer)
 from recipes.models import (Cart, Favorite, IngredientInRecipe, Ingredients,
                             Recipes, Tags)
-from users.models import Subscribe
-
-User = get_user_model()
+from users.models import Subscribe, User
 
 
 class CustomUserViewSet(UserViewSet):
@@ -88,11 +86,7 @@ class CustomUserViewSet(UserViewSet):
         )
 
 
-class IngredientsViewSet(
-    mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
-    viewsets.GenericViewSet
-):
+class IngredientsViewSet(ReadOnlyModelViewSet):
     """Вьюсет для модели Ingredients"""
 
     serializer_class = IngredientsSerializer
@@ -102,11 +96,7 @@ class IngredientsViewSet(
     filter_backends = [IngredientsFilter]
 
 
-class TagsViewSet(
-    mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
-    viewsets.GenericViewSet
-):
+class TagsViewSet(ReadOnlyModelViewSet):
     """Вьюсет для модели Tags"""
 
     serializer_class = TagsSerializer
@@ -115,12 +105,7 @@ class TagsViewSet(
     pagination_class = None
 
 
-class RecipesViewSet(mixins.ListModelMixin,
-                     mixins.RetrieveModelMixin,
-                     mixins.CreateModelMixin,
-                     mixins.UpdateModelMixin,
-                     mixins.DestroyModelMixin,
-                     viewsets.GenericViewSet):
+class RecipesViewSet(ModelViewSet):
     """Вьюсет для модели Recipes, Favorite и Cart"""
 
     queryset = Recipes.objects.all()
@@ -128,12 +113,6 @@ class RecipesViewSet(mixins.ListModelMixin,
     pagination_class = PageNumberPagination
     permission_classes = [IsAdminAuthorOrReadOnly]
     filter_class = RecipesFilterSet
-
-    def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
-
-    def perform_destroy(self, instance):
-        instance.delete()
 
     def favorite_and_cart(self, request, pk, model, errors):
         """Общая функция для Favorite и Cart для добавления и удаления"""

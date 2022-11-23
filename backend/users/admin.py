@@ -4,9 +4,20 @@ from .models import Subscribe, User
 
 
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('id', 'username', 'email', 'first_name', 'last_name')
+    list_display = (
+        'id', 'username', 'email', 'first_name', 'last_name',
+        'get_recipes_count', 'get_subscriptions_count'
+    )
     search_fields = ('username', 'email', 'first_name', 'last_name')
-    list_filter = ('username', 'email', 'first_name', 'last_name')
+    list_filter = ('username', 'email', 'first_name', 'last_name', )
+
+    def get_recipes_count(self, obj):
+        return obj.recipe_author.count()
+    get_recipes_count.short_description = 'Количество рецептов'
+
+    def get_subscriptions_count(self, obj):
+        return obj.following.count()
+    get_subscriptions_count.short_description = 'Количество подписчиков'
 
 
 class SubscribeAdmin(admin.ModelAdmin):

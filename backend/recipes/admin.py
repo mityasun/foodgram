@@ -21,15 +21,25 @@ class IngredientAmount(admin.TabularInline):
 
 
 class RecipesAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'author', 'get_favorites_count')
+    list_display = (
+        'id', 'name', 'author', 'get_ingredients', 'get_favorites_count',
+        'get_shopping_cart_count'
+    )
     search_fields = ('id', 'name', 'tags', 'ingredients')
     list_filter = ('name', 'tags', 'author')
     inlines = [IngredientAmount]
 
+    def get_ingredients(self, obj):
+        return obj.ingredients
+    get_ingredients.short_description = 'Ингредиенты'
+
     def get_favorites_count(self, obj):
         return obj.favorite_related.count()
-
     get_favorites_count.short_description = 'Добавили в избранное'
+
+    def get_shopping_cart_count(self, obj):
+        return obj.cart_related.count()
+    get_shopping_cart_count.short_description = 'Добавили в список покупок'
 
 
 class FavoriteAdmin(admin.ModelAdmin):

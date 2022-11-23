@@ -1,18 +1,15 @@
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
-from backend.settings import (EMAIL, FIRST_NAME, LAST_NAME, PASSWORD,
-                              RECIPE_NAME, USERNAME)
+from api.mixins import check_request_user, is_subscribed
 from recipes.models import IngredientInRecipe, Ingredients, Recipes, Tags
 from recipes.validators import validate_amount, validate_cooking_time
-from users.models import Subscribe
+from users.models import Subscribe, User
 from users.validators import ValidateUsername
-
-User = get_user_model()
 
 
 class CustomUserSerializer(UserSerializer):
@@ -28,28 +25,31 @@ class CustomUserSerializer(UserSerializer):
         )
 
     def get_is_subscribed(self, obj):
-        """Получаем статус подписки на автора"""
-
-        user = self.context.get('request').user
-        if user.is_anonymous:
+        if not check_request_user(self):
             return False
-        return Subscribe.objects.filter(user=user, author=obj.id).exists()
+        return is_subscribed(self, obj)
 
 
 class CustomUserCreateSerializer(UserCreateSerializer, ValidateUsername):
     """Сериализатор регистрации юзеров"""
 
     email = serializers.EmailField(
-        required=True, max_length=EMAIL,
+        required=True, max_length=settings.EMAIL,
         validators=[UniqueValidator(queryset=User.objects.all())]
     )
     username = serializers.CharField(
-        required=True, max_length=USERNAME,
+        required=True, max_length=settings.USERNAME,
         validators=[UniqueValidator(queryset=User.objects.all())]
     )
-    first_name = serializers.CharField(required=True, max_length=FIRST_NAME)
-    last_name = serializers.CharField(required=True, max_length=LAST_NAME)
-    password = serializers.CharField(required=True, max_length=PASSWORD)
+    first_name = serializers.CharField(
+        required=True, max_length=settings.FIRST_NAME
+    )
+    last_name = serializers.CharField(
+        required=True, max_length=settings.LAST_NAME
+    )
+    password = serializers.CharField(
+        required=True, max_length=settings.PASSWORD
+    )
 
     class Meta(UserCreateSerializer.Meta):
         model = User
@@ -87,7 +87,7 @@ class SubscribeSerializer(serializers.ModelSerializer):
         """Получаем статус подписки на автора"""
 
         return Subscribe.objects.filter(
-            user=obj.user, author=obj.author
+            author__following__user=obj.user
         ).exists()
 
     def get_recipes(self, obj):
@@ -100,9 +100,10 @@ class SubscribeSerializer(serializers.ModelSerializer):
         return ShortSerializer(queryset, many=True).data
 
     def get_recipes_count(self, obj):
-        """Считаем рецепты, на которые подписаны"""
+        """Считаем рецепты автора, на которого подписан пользователь"""
 
         return Recipes.objects.filter(author=obj.author).count()
+        # return obj.following.count()
 
 
 class TagsSerializer(serializers.ModelSerializer):
@@ -145,7 +146,9 @@ class RecipesSerializer(serializers.ModelSerializer):
     )
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
-    name = serializers.CharField(required=True, max_length=RECIPE_NAME)
+    name = serializers.CharField(
+        required=True, max_length=settings.RECIPE_NAME
+    )
     image = Base64ImageField(
         max_length=None, required=True,
         allow_null=False, allow_empty_file=False
@@ -194,6 +197,8 @@ class RecipesSerializer(serializers.ModelSerializer):
                     {'tags': 'Теги в рецепте не должны повторяться'}
                 )
             tags_list.append(tag)
+
+        data['author'] = self.context.get('request').user
         data['ingredients'] = ingredients
         data['tags'] = tags
         return data
@@ -202,10 +207,12 @@ class RecipesSerializer(serializers.ModelSerializer):
         """Создаем связку ингредиентов для рецепта"""
 
         for ingredient_item in ingredients:
-            IngredientInRecipe.objects.create(
-                ingredient_id=ingredient_item['id'],
-                recipe=recipe,
-                amount=ingredient_item['amount'],
+            IngredientInRecipe.objects.bulk_create(
+                [IngredientInRecipe(
+                    ingredient_id=ingredient_item['id'],
+                    recipe=recipe,
+                    amount=ingredient_item['amount']
+                )]
             )
 
     def create(self, validated_data):
@@ -223,36 +230,28 @@ class RecipesSerializer(serializers.ModelSerializer):
     def update(self, recipe, validated_data):
         """Обновляем рецепт"""
 
-        recipe.image = validated_data.get('image', recipe.image)
-        recipe.name = validated_data.get('name', recipe.name)
-        recipe.text = validated_data.get('text', recipe.text)
-        recipe.cooking_time = validated_data.get(
-            'cooking_time', recipe.cooking_time
-        )
-        tags = validated_data.get('tags')
-        recipe.tags.clear()
-        recipe.tags.set(tags)
         recipe.ingredients.clear()
-        self.create_ingredients(validated_data.get('ingredients'), recipe)
-        recipe.save()
+        self.create_ingredients(validated_data.pop('ingredients'), recipe)
+        tags = validated_data.pop('tags')
+        recipe = super().update(recipe, validated_data)
+        recipe.tags.set(tags)
         return recipe
+
+    def delete(self, recipe):
+        """Удаляем рецепт"""
+
+        recipe.delete()
 
     def get_is_favorited(self, obj):
         """Получаем статус избранного"""
 
-        user = self.context.get('request').user
-        if user.is_anonymous:
+        if not check_request_user(self):
             return False
-        return Recipes.objects.filter(
-            favorite_related__user=user, id=obj.id
-        ).exists()
+        return obj.favorite_related.exists()
 
     def get_is_in_shopping_cart(self, obj):
         """Получаем статус списка покупок"""
 
-        user = self.context.get('request').user
-        if user.is_anonymous:
+        if not check_request_user(self):
             return False
-        return Recipes.objects.filter(
-            cart_related__user=user, id=obj.id
-        ).exists()
+        return obj.cart_related.exists()

@@ -1,12 +1,10 @@
-from django.contrib.auth import get_user_model
 from django_filters import NumberFilter
 from django_filters import rest_framework as filters
 from django_filters.rest_framework import FilterSet
 from rest_framework.filters import SearchFilter
 
 from recipes.models import Recipes
-
-User = get_user_model()
+from users.models import User
 
 
 class IngredientsFilter(SearchFilter):
@@ -34,18 +32,16 @@ class RecipesFilterSet(FilterSet):
     def filter_is_favorited(self, queryset, is_favorited, number):
         """Фильтрация по избранному"""
 
-        user = self.request.user
-        if number == 1:
-            return queryset.filter(favorite_related__user=user)
-        return queryset.exclude(favorite_related__user=user)
+        if number:
+            return queryset.filter(favorite_related__user=self.request.user)
+        return queryset
 
     def filter_shopping_cart(self, queryset, is_in_shopping_cart, number):
         """Фильтрация по списку покупок"""
 
-        user = self.request.user
-        if number == 1:
-            return queryset.filter(cart_related__user=user)
-        return queryset.exclude(cart_related__user=user)
+        if number:
+            return queryset.filter(cart_related__user=self.request.user)
+        return queryset
 
     class Meta:
         model = Recipes
