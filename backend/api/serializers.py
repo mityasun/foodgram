@@ -5,7 +5,7 @@ from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
-from api.mixins import check_request_user, is_subscribed
+from api.mixins import check_request_user
 from recipes.models import IngredientInRecipe, Ingredients, Recipes, Tags
 from recipes.validators import validate_amount, validate_cooking_time
 from users.models import Subscribe, User
@@ -25,9 +25,12 @@ class CustomUserSerializer(UserSerializer):
         )
 
     def get_is_subscribed(self, obj):
+        """Получаем статус подписки на автора"""
+
+        # Тут и ниже разные релэйты, поэтому их не объединить в один
         if not check_request_user(self):
             return False
-        return is_subscribed(self, obj)
+        return obj.following.exists()
 
 
 class CustomUserCreateSerializer(UserCreateSerializer, ValidateUsername):
@@ -86,14 +89,15 @@ class SubscribeSerializer(serializers.ModelSerializer):
     def get_is_subscribed(self, obj):
         """Получаем статус подписки на автора"""
 
-        return Subscribe.objects.filter(
-            author__following__user=obj.user
-        ).exists()
+        # Тут и выше разные релэйты, поэтому их не объединить в один
+        return obj.user.follower.exists()
 
     def get_recipes(self, obj):
         """Получаем рецепты, на которые подписаны и ограничиваем по лимитам"""
 
-        queryset = Recipes.objects.filter(author=obj.author)
+        queryset = Recipes.objects.filter(author__following__user=obj.user)
+        # queryset = obj.author.recipe_author.values()
+        # в таком варианте картинки в null превращаются
         recipes_limit = self.context.get('request').GET.get('recipes_limit')
         if recipes_limit:
             queryset = queryset[:int(recipes_limit)]
@@ -102,8 +106,7 @@ class SubscribeSerializer(serializers.ModelSerializer):
     def get_recipes_count(self, obj):
         """Считаем рецепты автора, на которого подписан пользователь"""
 
-        return Recipes.objects.filter(author=obj.author).count()
-        # return obj.following.count()
+        return obj.author.recipe_author.count()
 
 
 class TagsSerializer(serializers.ModelSerializer):
@@ -137,7 +140,7 @@ class IngredientInRecipeSerializer(serializers.ModelSerializer):
 
 
 class RecipesSerializer(serializers.ModelSerializer):
-    """Сериализатор Recipes для создания и обновления рецептов"""
+    """Сериализатор Recipes для создания, обновления и удаления рецептов"""
 
     tags = TagsSerializer(many=True, read_only=True)
     author = CustomUserSerializer(read_only=True)
@@ -247,11 +250,11 @@ class RecipesSerializer(serializers.ModelSerializer):
 
         if not check_request_user(self):
             return False
-        return obj.favorite_related.exists()
+        return obj.favorite.exists()
 
     def get_is_in_shopping_cart(self, obj):
         """Получаем статус списка покупок"""
 
         if not check_request_user(self):
             return False
-        return obj.cart_related.exists()
+        return obj.cart.exists()

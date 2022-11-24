@@ -1,41 +1,19 @@
+import csv
 import datetime
-from csv import DictReader
 
 from django.core.management import BaseCommand
 
 from recipes.models import Ingredients, Tags
 
+csv_files = (
+    (Tags, 'tags.csv'),
+    (Ingredients, 'ingredients.csv')
+)
 
-def import_csv_data():
-    start_time = datetime.datetime.now()
-
-    csv_files = (
-        (Tags, 'recipes/management/data/tags.csv'),
-        (Ingredients, 'recipes/management/data/ingredients.csv')
-    )
-
-    for model, file in csv_files:
-        print(f"Загрузка данных таблицы {file} началась.")
-        for row in DictReader(open(file, encoding='utf-8')):
-            if file == 'recipes/management/data/tags.csv':
-                data = model(
-                    name=row['name'],
-                    color=row['color'],
-                    slug=row['slug']
-                )
-                data.save()
-            elif file == 'recipes/management/data/ingredients.csv':
-                data = model(
-                    name=row['name'],
-                    measurement_unit=row['measurement_unit']
-                )
-                data.save()
-        print(
-            f"Загрузка данных таблицы {file} завершена успешно.")
-
-    print(f"Загрузка данных завершена за"
-          f" {(datetime.datetime.now() - start_time).total_seconds()} "
-          f"сек.")
+fields = (
+    ('name', 'color', 'slug'),
+    ('name', 'measurement_unit')
+)
 
 
 class Command(BaseCommand):
@@ -45,9 +23,26 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         print("Старт импорта")
+        start_time = datetime.datetime.now()
 
         try:
-            import_csv_data()
+            for model, file in csv_files:
+                with open(
+                        f'recipes/management/data/{file}', encoding='utf-8'
+                ) as f:
+                    reader = csv.DictReader(f, delimiter=',')
+                    for row in reader:
+                        if model in fields:
+                            row[fields[model][2]] = row.pop(fields[model][0])
+                        obj, created = model.objects.get_or_create(**row)
+                        if created:
+                            print(f'{obj} загружен в таблицу {model.__name__}')
+                        print(
+                            f'{obj} уже загружен в таблицу {model.__name__}')
+
+            print(f"Загрузка данных завершена за"
+                  f" {(datetime.datetime.now() - start_time).total_seconds()} "
+                  f"сек.")
 
         except Exception as error:
             print(f"Сбой в работе импорта: {error}.")

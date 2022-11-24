@@ -121,12 +121,10 @@ class BaseModelFavoriteCart(models.Model):
     """Абстрактная модель для избранного и списка покупок."""
 
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE,
-        related_name='%(class)s_related', verbose_name='пользователь'
+        User, on_delete=models.CASCADE, verbose_name='пользователь'
     )
     recipe = models.ForeignKey(
-        Recipes, on_delete=models.CASCADE,
-        related_name='%(class)s_related', verbose_name='Рецепт'
+        Recipes, on_delete=models.CASCADE, verbose_name='Рецепт'
     )
 
     class Meta:
@@ -146,6 +144,7 @@ class Favorite(BaseModelFavoriteCart):
     """Модель избранного"""
 
     class Meta(BaseModelFavoriteCart.Meta):
+        default_related_name = 'favorite'
         verbose_name = 'Избранное'
         verbose_name_plural = 'Избранное'
 
@@ -154,5 +153,6 @@ class Cart(BaseModelFavoriteCart):
     """Модель списка покупок"""
 
     class Meta(BaseModelFavoriteCart.Meta):
+        default_related_name = 'cart'
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Список покупок'

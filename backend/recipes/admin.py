@@ -16,8 +16,9 @@ class IngredientsAdmin(admin.ModelAdmin):
     list_filter = ('measurement_unit',)
 
 
-class IngredientAmount(admin.TabularInline):
+class IngredientInRecipe(admin.TabularInline):
     model = Recipes.ingredients.through
+    # formset = ValidateFormSet
 
 
 class RecipesAdmin(admin.ModelAdmin):
@@ -27,18 +28,23 @@ class RecipesAdmin(admin.ModelAdmin):
     )
     search_fields = ('id', 'name', 'tags', 'ingredients')
     list_filter = ('name', 'tags', 'author')
-    inlines = [IngredientAmount]
+    inlines = [IngredientInRecipe]
 
     def get_ingredients(self, obj):
-        return obj.ingredients
+        return list(set(
+            [name for name in Recipes.objects.filter(id=obj.id).values_list(
+                'ingredients__name', flat=True
+            )]
+        ))
+
     get_ingredients.short_description = 'Ингредиенты'
 
     def get_favorites_count(self, obj):
-        return obj.favorite_related.count()
+        return obj.favorite.count()
     get_favorites_count.short_description = 'Добавили в избранное'
 
     def get_shopping_cart_count(self, obj):
-        return obj.cart_related.count()
+        return obj.cart.count()
     get_shopping_cart_count.short_description = 'Добавили в список покупок'
 
 

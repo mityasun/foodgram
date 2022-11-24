@@ -173,18 +173,17 @@ class RecipesViewSet(ModelViewSet):
         """Скачать список покупок в pdf"""
 
         ingredients = IngredientInRecipe.objects.filter(
-            recipe__cart_related__user=request.user).values_list(
+            recipe__cart__user=request.user).values_list(
             'ingredient__name', 'amount', 'ingredient__measurement_unit',
             'recipe__name'
         )
         if ingredients:
             ingredient_dict = {}
-            for ingredient_name, amount, unit, recipe_name in ingredients:
+            for ingredient_name, amount, unit in ingredients:
                 if ingredient_name not in ingredient_dict:
                     ingredient_dict[ingredient_name] = {
                         'amount': amount,
-                        'measurement_unit': unit,
-                        'recipe_name': recipe_name
+                        'measurement_unit': unit
                     }
                 else:
                     ingredient_dict[ingredient_name]['amount'] += amount
@@ -212,8 +211,7 @@ class RecipesViewSet(ModelViewSet):
             for ingredient_name, info in ingredient_dict.items():
                 page.drawString(
                     50, height, f'• {ingredient_name} - {info["amount"]} '
-                                f'{info["measurement_unit"]} для рецепта: '
-                                f'{info["recipe_name"]}.'
+                                f'{info["measurement_unit"]}.'
                 )
                 height -= 20
 
