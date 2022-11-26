@@ -254,8 +254,8 @@ class RecipesSerializer(serializers.ModelSerializer):
         if user.is_anonymous:
             return False
         return Recipes.objects.filter(
-                favorite__user=user, id=obj.id
-            ).exists()
+            favorite__user=user, id=obj.id
+        ).exists()
         # return obj.id.favorite.exists()
 
     def get_is_in_shopping_cart(self, obj):
