@@ -8,7 +8,6 @@ jobs:
     strategy:
       matrix:
         python-version: [ "3.7", "3.8", "3.9.8", "3.10" ]
-
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
@@ -30,6 +29,13 @@ jobs:
         contains('master', github.ref_name)
       name: Push Docker image to Docker Hub
       runs-on: ubuntu-latest
+      strategy:
+        matrix:
+          include:
+            - dockerfile: frontend/Dockerfile
+              tags: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_FRONT_IMAGE }}
+            - dockerfile: backend/Dockerfile
+              tags: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_BACK_IMAGE }}
       needs: tests
       steps:
         - name: Check out the repo
@@ -44,17 +50,10 @@ jobs:
         - name: Push Frontend to Docker Hub
             uses: docker/build-push-action@v3
             with:
-              context: frontend/
-              file: frontend/Dockerfile
+              context: .
+              file: ${{ matrix.dockerfile }}
               push: true
-              tags: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_FRONT_IMAGE }}
-        - name: Push Backend to Docker Hub
-            uses: docker/build-push-action@v3
-            with:
-              context: backend/
-              file: backend/Dockerfile
-              push: true
-              tags: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_BACK_IMAGE }}
+              tags: ${{ matrix.tags }}
 
   deploy:
     if:
