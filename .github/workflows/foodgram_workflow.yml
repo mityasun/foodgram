@@ -44,7 +44,7 @@ jobs:
           context: backend/
           file: backend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_FRONT_IMAGE }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_BACK_IMAGE }}
 
   deploy:
     if:
