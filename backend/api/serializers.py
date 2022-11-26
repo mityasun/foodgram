@@ -252,11 +252,17 @@ class RecipesSerializer(serializers.ModelSerializer):
 
         if not check_request_user(self):
             return False
-        return obj.favorite.exists()
+        return Recipes.objects.filter(
+            favorite__user=obj.user, id=obj.id
+        ).exists()
+        # return obj.id.favorite.exists()
 
     def get_is_in_shopping_cart(self, obj):
         """Получаем статус списка покупок"""
 
         if not check_request_user(self):
             return False
-        return obj.cart.exists()
+        return Recipes.objects.filter(
+            cart__user=obj.user, id=obj.id
+        ).exists()
+        # return obj.id.cart.exists()
