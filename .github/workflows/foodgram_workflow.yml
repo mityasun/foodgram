@@ -29,13 +29,6 @@ jobs:
         contains('master', github.ref_name)
       name: Push Docker image to Docker Hub
       runs-on: ubuntu-latest
-      strategy:
-        matrix:
-          include:
-            - dockerfile: frontend/Dockerfile
-              tags: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_FRONT_IMAGE }}
-            - dockerfile: backend/Dockerfile
-              tags: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_BACK_IMAGE }}
       needs: tests
       steps:
         - name: Check out the repo
@@ -47,13 +40,13 @@ jobs:
           with:
             username: ${{ secrets.DOCKER_USERNAME }}
             password: ${{ secrets.DOCKER_PASSWORD }}
-        - name: Push Frontend to Docker Hub
+        - name: to Docker Hub
             uses: docker/build-push-action@v3
             with:
-              context: .
-              file: ${{ matrix.dockerfile }}
+              context: backend/
+              file: backend/Dockerfile
               push: true
-              tags: ${{ matrix.tags }}
+              tags: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_BACK_IMAGE }}
 
   deploy:
     if:
