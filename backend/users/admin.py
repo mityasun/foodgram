@@ -3,6 +3,7 @@ from django.contrib import admin
 from .models import Subscribe, User
 
 
+@admin.register(User)
 class UserAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'username', 'email', 'first_name', 'last_name',
@@ -20,10 +21,8 @@ class UserAdmin(admin.ModelAdmin):
     get_subscriptions_count.short_description = 'Количество подписчиков'
 
 
+@admin.register(Subscribe)
 class SubscribeAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'author')
     search_fields = ('user', 'author')
-
-
-admin.site.register(User, UserAdmin)
-admin.site.register(Subscribe, SubscribeAdmin)
+    autocomplete_fields = ('user', 'author')

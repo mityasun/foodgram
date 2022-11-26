@@ -1,11 +1,6 @@
-from io import BytesIO
-
-from django.http import HttpResponse
+from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfgen import canvas
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
@@ -14,10 +9,12 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from api.filters import IngredientsFilter, RecipesFilterSet
-from api.permissions import IsAdminAuthorOrReadOnly, IsAdminOrReadOnly
+from api.mixins import FavoriteCart
+from api.permissions import IsAdminAuthorOrReadOnly
 from api.serializers import (CustomUserSerializer, IngredientsSerializer,
                              RecipesSerializer, ShortSerializer,
                              SubscribeSerializer, TagsSerializer)
+from api.utils import download_pdf
 from recipes.models import (Cart, Favorite, IngredientInRecipe, Ingredients,
                             Recipes, Tags)
 from users.models import Subscribe, User
@@ -91,9 +88,10 @@ class IngredientsViewSet(ReadOnlyModelViewSet):
 
     serializer_class = IngredientsSerializer
     queryset = Ingredients.objects.all()
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAdminAuthorOrReadOnly]
     pagination_class = None
     filter_backends = [IngredientsFilter]
+    search_fields = ('^name',)
 
 
 class TagsViewSet(ReadOnlyModelViewSet):
@@ -101,11 +99,11 @@ class TagsViewSet(ReadOnlyModelViewSet):
 
     serializer_class = TagsSerializer
     queryset = Tags.objects.all()
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAdminAuthorOrReadOnly]
     pagination_class = None
 
 
-class RecipesViewSet(ModelViewSet):
+class RecipesViewSet(ModelViewSet, FavoriteCart):
     """Вьюсет для модели Recipes, Favorite и Cart"""
 
     queryset = Recipes.objects.all()
@@ -113,30 +111,8 @@ class RecipesViewSet(ModelViewSet):
     pagination_class = PageNumberPagination
     permission_classes = [IsAdminAuthorOrReadOnly]
     filter_class = RecipesFilterSet
-
-    def favorite_and_cart(self, request, pk, model, errors):
-        """Общая функция для Favorite и Cart для добавления и удаления"""
-
-        user = request.user
-        obj = model.objects.filter(user=user, recipe=pk)
-        if request.method == 'POST':
-            if obj.exists():
-                return Response(
-                    {'errors': errors.get('if_exists')},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            recipe = get_object_or_404(Recipes, id=pk)
-            model.objects.create(user=user, recipe=recipe)
-            return Response(
-                ShortSerializer(recipe).data, status=status.HTTP_201_CREATED
-            )
-        if obj.exists():
-            obj.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(
-            {'errors': errors.get('if_deleted')},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+    add_serializer = ShortSerializer
+    add_model = Recipes
 
     @action(
         methods=['post', 'delete'],
@@ -174,54 +150,11 @@ class RecipesViewSet(ModelViewSet):
 
         ingredients = IngredientInRecipe.objects.filter(
             recipe__cart__user=request.user).values_list(
-            'ingredient__name', 'amount', 'ingredient__measurement_unit',
-            'recipe__name'
-        )
+            'ingredient__name', 'ingredient__measurement_unit'
+        ).annotate(Sum('amount')).order_by()
+
         if ingredients:
-            ingredient_dict = {}
-            for ingredient_name, amount, unit in ingredients:
-                if ingredient_name not in ingredient_dict:
-                    ingredient_dict[ingredient_name] = {
-                        'amount': amount,
-                        'measurement_unit': unit
-                    }
-                else:
-                    ingredient_dict[ingredient_name]['amount'] += amount
-
-            response = HttpResponse(content_type='application/pdf')
-            response['Content-Disposition'] = (
-                'inline; filename="shopping_list.pdf"'
-            )
-
-            buffer = BytesIO()
-            page = canvas.Canvas(buffer)
-
-            pdfmetrics.registerFont(
-                TTFont(
-                    'Roboto-Regular',
-                    'recipes/static/fonts/Roboto-Regular.ttf', 'UTF-8'
-                )
-            )
-            page.setFont('Roboto-Regular', size=24)
-            page.drawString(150, 800, 'Рецепты с сайта Foodgram')
-            page.setFont('Roboto-Regular', size=20)
-            page.drawString(130, 750, 'Список ингредиентов для рецептов')
-            page.setFont('Roboto-Regular', size=16)
-            height = 700
-            for ingredient_name, info in ingredient_dict.items():
-                page.drawString(
-                    50, height, f'• {ingredient_name} - {info["amount"]} '
-                                f'{info["measurement_unit"]}.'
-                )
-                height -= 20
-
-            page.showPage()
-            page.save()
-            pdf = buffer.getvalue()
-            buffer.close()
-            response.write(pdf)
-            return response
-
+            return download_pdf(request, ingredients)
         return Response(
             {'errors': 'Нет рецептов в списке покупок'},
             status=status.HTTP_400_BAD_REQUEST

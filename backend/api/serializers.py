@@ -28,6 +28,7 @@ class CustomUserSerializer(UserSerializer):
         """Получаем статус подписки на автора"""
 
         # Тут и ниже разные релэйты, поэтому их не объединить в один
+        # Здесь в obj хранится user.id
         if not check_request_user(self):
             return False
         return obj.following.exists()
@@ -90,6 +91,7 @@ class SubscribeSerializer(serializers.ModelSerializer):
         """Получаем статус подписки на автора"""
 
         # Тут и выше разные релэйты, поэтому их не объединить в один
+        # Здесь хранится объект user
         return obj.user.follower.exists()
 
     def get_recipes(self, obj):
