@@ -41,13 +41,20 @@ jobs:
           with:
             username: ${{ secrets.DOCKER_USERNAME }}
             password: ${{ secrets.DOCKER_PASSWORD }}
-        - name: Push to Docker Hub
-          uses: docker/build-push-action@v3
-          with:
-            context: backend/
-            file: backend/Dockerfile
-            push: true
-            tags: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE }}
+        - name: Push Frontend to Docker Hub
+            uses: docker/build-push-action@v3
+            with:
+              context: frontend/
+              file: frontend/Dockerfile
+              push: true
+              tags: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_FRONT_IMAGE }}
+        - name: Push Backend to Docker Hub
+            uses: docker/build-push-action@v3
+            with:
+              context: backend/
+              file: backend/Dockerfile
+              push: true
+              tags: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_BACK_IMAGE }}
 
   deploy:
     if:
@@ -63,7 +70,8 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
           script: |
-            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE }}
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_FRONT_IMAGE }}
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_BACK_IMAGE }}
             sudo docker-compose stop
             sudo docker-compose rm foodgram_backend
             touch .env
