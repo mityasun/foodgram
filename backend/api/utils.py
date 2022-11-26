@@ -19,7 +19,7 @@ def download_pdf(request, ingredients):
     pdfmetrics.registerFont(
         TTFont(
             'Roboto-Regular',
-            '../recipes/static/fonts/Roboto-Regular.ttf', 'UTF-8'
+            'static/fonts/Roboto-Regular.ttf', 'UTF-8'
         )
     )
     page.setFont('Roboto-Regular', size=24)
