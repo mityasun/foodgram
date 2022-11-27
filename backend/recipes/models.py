@@ -2,9 +2,9 @@ from colorfield.fields import ColorField
 from django.conf import settings
 from django.db import models
 
+from recipes.validators import (validate_amount, validate_cooking_time,
+                                validate_slug)
 from users.models import User
-
-from .validators import validate_amount, validate_cooking_time, validate_slug
 
 
 class Ingredients(models.Model):

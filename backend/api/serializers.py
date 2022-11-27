@@ -5,8 +5,9 @@ from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
-from api.mixins import check_request_user
-from recipes.models import IngredientInRecipe, Ingredients, Recipes, Tags
+from api.mixins import check_request_send_boolean
+from recipes.models import (Cart, Favorite, IngredientInRecipe, Ingredients,
+                            Recipes, Tags)
 from recipes.validators import validate_amount, validate_cooking_time
 from users.models import Subscribe, User
 from users.validators import ValidateUsername
@@ -27,11 +28,9 @@ class CustomUserSerializer(UserSerializer):
     def get_is_subscribed(self, obj):
         """Получаем статус подписки на автора"""
 
-        # Тут и ниже разные релэйты, поэтому их не объединить в один
-        # Здесь в obj хранится user.id
-        if not check_request_user(self):
-            return False
-        return obj.following.exists()
+        if check_request_send_boolean(self, obj, Subscribe):
+            return True
+        return False
 
 
 class CustomUserCreateSerializer(UserCreateSerializer, ValidateUsername):
@@ -90,16 +89,12 @@ class SubscribeSerializer(serializers.ModelSerializer):
     def get_is_subscribed(self, obj):
         """Получаем статус подписки на автора"""
 
-        # Тут и выше разные релэйты, поэтому их не объединить в один
-        # Здесь хранится объект user
         return obj.user.follower.exists()
 
     def get_recipes(self, obj):
         """Получаем рецепты, на которые подписаны и ограничиваем по лимитам"""
 
         queryset = Recipes.objects.filter(author__following__user=obj.user)
-        # queryset = obj.author.recipe_author.values()
-        # в таком варианте картинки в null превращаются
         recipes_limit = self.context.get('request').GET.get('recipes_limit')
         if recipes_limit:
             queryset = queryset[:int(recipes_limit)]
@@ -238,9 +233,8 @@ class RecipesSerializer(serializers.ModelSerializer):
         recipe.ingredients.clear()
         self.create_ingredients(validated_data.pop('ingredients'), recipe)
         tags = validated_data.pop('tags')
-        recipe = super().update(recipe, validated_data)
         recipe.tags.set(tags)
-        return recipe
+        return super().update(recipe, validated_data)
 
     def delete(self, recipe):
         """Удаляем рецепт"""
@@ -248,23 +242,14 @@ class RecipesSerializer(serializers.ModelSerializer):
         recipe.delete()
 
     def get_is_favorited(self, obj):
-        """Получаем статус избранного"""
 
-        user = self.context.get('request').user
-        if user.is_anonymous:
-            return False
-        return Recipes.objects.filter(
-            favorite__user=user, id=obj.id
-        ).exists()
-        # return obj.id.favorite.exists()
+        if check_request_send_boolean(self, obj, Favorite):
+            return True
+        return False
 
     def get_is_in_shopping_cart(self, obj):
         """Получаем статус списка покупок"""
 
-        user = self.context.get('request').user
-        if user.is_anonymous:
-            return False
-        return Recipes.objects.filter(
-            cart__user=user, id=obj.id
-        ).exists()
-        # return obj.id.cart.exists()
+        if check_request_send_boolean(self, obj, Cart):
+            return True
+        return False

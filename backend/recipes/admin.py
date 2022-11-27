@@ -27,10 +27,9 @@ class IngredientInRecipeInline(admin.TabularInline):
     )
     readonly_fields = ('get_measurement_unit',)
 
-    # Почему не достаются тут ед. измерения?
+    @admin.display(description='Ед. измерения')
     def get_measurement_unit(self, obj):
         return obj.ingredient.measurement_unit
-    get_measurement_unit.short_description = 'Ед. измерения'
 
 
 @admin.register(Recipes)
@@ -44,20 +43,18 @@ class RecipesAdmin(admin.ModelAdmin):
     autocomplete_fields = ('author', 'tags')
     inlines = [IngredientInRecipeInline]
 
+    @admin.display(description='Ингредиенты')
     def get_ingredients(self, obj):
-        return list(
-            Recipes.objects.filter(id=obj.id).values_list(
-                'ingredients__name', flat=True).order_by('-ingredients__name')
-        )
-    get_ingredients.short_description = 'Ингредиенты'
+        return list(Recipes.objects.filter(id=obj.id).values_list(
+            'ingredients__name', flat=True).order_by('-ingredients__name'))
 
+    @admin.display(description='Добавили в избранное')
     def get_favorites_count(self, obj):
         return obj.favorite.count()
-    get_favorites_count.short_description = 'Добавили в избранное'
 
+    @admin.display(description='Добавили в список покупок')
     def get_shopping_cart_count(self, obj):
         return obj.cart.count()
-    get_shopping_cart_count.short_description = 'Добавили в список покупок'
 
 
 @admin.register(Favorite)

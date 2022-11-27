@@ -12,13 +12,13 @@ class UserAdmin(admin.ModelAdmin):
     search_fields = ('username', 'email', 'first_name', 'last_name')
     list_filter = ('username', 'email', 'first_name', 'last_name', )
 
+    @admin.display(description='Количество рецептов')
     def get_recipes_count(self, obj):
         return obj.recipe_author.count()
-    get_recipes_count.short_description = 'Количество рецептов'
 
+    @admin.display(description='Количество подписчиков')
     def get_subscriptions_count(self, obj):
         return obj.following.count()
-    get_subscriptions_count.short_description = 'Количество подписчиков'
 
 
 @admin.register(Subscribe)

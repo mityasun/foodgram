@@ -2,14 +2,18 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
 
+from users.models import Subscribe
 
-def check_request_user(self):
+
+def check_request_send_boolean(self, obj, model):
     """Проверяем, что запрос есть и юзер не аноним"""
 
     request = self.context.get('request')
-    if request is None or request.user.is_anonymous:
+    if not request or request.user.is_anonymous:
         return False
-    return True
+    if model == Subscribe:
+        return model.objects.filter(user=request.user, author=obj.id).exists()
+    return model.objects.filter(recipe=obj, user=request.user).exists()
 
 
 class FavoriteCart:
