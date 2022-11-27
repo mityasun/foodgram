@@ -1,7 +1,7 @@
 ![Test and push to Docker Hub](https://github.com/mityasun/foodgram-project-react/actions/workflows/foodgram_workflow.yml/badge.svg)
 
 ## Проект Foodgram - сайта с рецептами.
-11
+
 ***Здесь вы можете создавать рецепты, добавлять их в избранное, добавлять их в список покупок и скачивать список покупок. Также можно подписываться на других авторов рецептов.***
 
 ### Возможности проекта:
