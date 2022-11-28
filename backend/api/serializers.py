@@ -5,7 +5,7 @@ from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
-from api.mixins import check_request_send_boolean
+from api.mixins import check_request_return_boolean
 from recipes.models import (Cart, Favorite, IngredientInRecipe, Ingredients,
                             Recipes, Tags)
 from recipes.validators import validate_amount, validate_cooking_time
@@ -28,7 +28,7 @@ class CustomUserSerializer(UserSerializer):
     def get_is_subscribed(self, obj):
         """Получаем статус подписки на автора"""
 
-        if check_request_send_boolean(self, obj, Subscribe):
+        if check_request_return_boolean(self, obj, Subscribe):
             return True
         return False
 
@@ -243,13 +243,13 @@ class RecipesSerializer(serializers.ModelSerializer):
 
     def get_is_favorited(self, obj):
 
-        if check_request_send_boolean(self, obj, Favorite):
+        if check_request_return_boolean(self, obj, Favorite):
             return True
         return False
 
     def get_is_in_shopping_cart(self, obj):
         """Получаем статус списка покупок"""
 
-        if check_request_send_boolean(self, obj, Cart):
+        if check_request_return_boolean(self, obj, Cart):
             return True
         return False

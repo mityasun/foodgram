@@ -52,14 +52,14 @@ class CustomUserViewSet(UserViewSet):
 
         user = request.user
         author = get_object_or_404(User, pk=id)
-        subscribe_obj = Subscribe.objects.filter(user=user, author=author)
+        obj = Subscribe.objects.filter(user=user, author=author)
 
         if request.method == 'POST':
             if user == author:
                 return Response({'errors': 'На себя подписаться нельзя'},
                                 status=status.HTTP_400_BAD_REQUEST
                                 )
-            if subscribe_obj.exists():
+            if obj.exists():
                 return Response(
                     {'errors': f'Вы уже подписаны на {author.username}'},
                     status=status.HTTP_400_BAD_REQUEST
@@ -74,8 +74,8 @@ class CustomUserViewSet(UserViewSet):
                 {'errors': 'Вы не можете отписаться от самого себя'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        if subscribe_obj.exists():
-            subscribe_obj.delete()
+        if obj.exists():
+            obj.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(
             {'errors': f'Вы уже отписались от {author.username}'},

@@ -5,8 +5,8 @@ from rest_framework.response import Response
 from users.models import Subscribe
 
 
-def check_request_send_boolean(self, obj, model):
-    """Проверяем, что запрос есть и юзер не аноним"""
+def check_request_return_boolean(self, obj, model):
+    """Проверяем, что запрос есть, юзер не аноним и возвращаем булевую"""
 
     request = self.context.get('request')
     if not request or request.user.is_anonymous:

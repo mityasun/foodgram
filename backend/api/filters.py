@@ -8,10 +8,7 @@ from users.models import User
 
 
 class IngredientsFilter(SearchFilter):
-    """
-    Полнотекстовый поиск по ингредиентам
-    !НО не сделал еще игнорирование регистра
-    """
+    """Полнотекстовый поиск по ингредиентам"""
 
     def get_search_fields(self, view, request):
         if request.query_params.get('name'):
