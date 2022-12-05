@@ -116,6 +116,9 @@ class IngredientInRecipe(models.Model):
             )
         ]
 
+    def __str__(self):
+        return f'{self.ingredient}'
+
 
 class BaseModelFavoriteCart(models.Model):
     """Абстрактная модель для избранного и списка покупок."""

@@ -30,6 +30,19 @@ class CustomUserViewSet(UserViewSet):
 
     @action(
         methods=['get'], detail=False,
+        permission_classes=[IsAuthenticated]
+    )
+    def me(self, request):
+        """Получить данные текущего пользователя"""
+
+        return Response(
+            CustomUserSerializer(
+                get_object_or_404(User, id=request.user.id)).data,
+            status=status.HTTP_200_OK
+        )
+
+    @action(
+        methods=['get'], detail=False,
         permission_classes=[IsAuthenticated],
         pagination_class=PageNumberPagination
     )
