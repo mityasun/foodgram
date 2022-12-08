@@ -23,7 +23,7 @@ services:
   frontend:
     image: artemmityasun/foodgram_frontend:latest
     volumes:
-      - ../frontend/:/app/result_build/
+      - ../frontend/:/frontend/result_build/
     depends_on:
       - db
     container_name: foodgram_frontend
