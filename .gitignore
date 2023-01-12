@@ -133,3 +133,6 @@ dmypy.json
 
 # media
 backend/media/
+
+# files fro production
+Prod/

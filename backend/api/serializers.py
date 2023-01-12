@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from drf_extra_fields.fields import Base64ImageField
@@ -215,6 +216,7 @@ class RecipesSerializer(serializers.ModelSerializer):
                 )]
             )
 
+    @transaction.atomic
     def create(self, validated_data):
         """Создаем рецепт"""
 
@@ -227,6 +229,7 @@ class RecipesSerializer(serializers.ModelSerializer):
         recipe.save()
         return recipe
 
+    @transaction.atomic
     def update(self, recipe, validated_data):
         """Обновляем рецепт"""
 
