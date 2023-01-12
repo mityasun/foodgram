@@ -35,8 +35,9 @@ class Test01UserRegistration:
         for field in empty_fields:
             assert (field in response_json.keys()
                     and isinstance(response_json[field], list)), (
-                f'Проверьте, что при POST запросе {self.url_signup} без '
-                f'параметров в ответе есть сообщение о том, какие поля пустые'
+                f'Проверьте, что при POST запросе {self.url_signup} без поля '
+                f'{field} регистрация невозможна и  в ответе есть сообщение '
+                f'о том, какие поля пустые'
             )
 
     @pytest.mark.django_db(transaction=True)
@@ -44,46 +45,72 @@ class Test01UserRegistration:
 
         invalid_data = {
             'email': 'invalid_email',
-            'username': 'invalid_username@foodgram.fake'
-        }
-        response = client.post(self.url_signup, data=invalid_data)
-
-        assert response.status_code != status.HTTP_404_NOT_FOUND, (
-            f'Страница `{self.url_signup}` не найдена '
-            f'{status.HTTP_404_NOT_FOUND}'
-        )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST, (
-            f'Проверьте, что POST запрос на {self.url_signup} с невалидными '
-            f'данными не создает пользователь и возвращается '
-            f'статус {status.HTTP_400_BAD_REQUEST}'
-        )
-
-        response_json = response.json()
-        invalid_fields = ['email']
-        for field in invalid_fields:
-            assert (field in response_json.keys()
-                    and isinstance(response_json[field], list)), (
-                f'Проверьте, что в POST запросе {self.url_signup} с '
-                f'невалидными данными, в ответе есть сообщение о том, '
-                f'какие поля заполнены неправильно'
-            )
-
-        valid_data = {
-            'email': self.valid_email,
             'username': self.valid_username,
             'first_name': self.valid_first_name,
             'last_name': self.valid_last_name,
             'password': self.valid_password
         }
-        response = client.post(self.url_signup, data=valid_data)
+        response = client.post(self.url_signup, data=invalid_data)
+        assert response.status_code != status.HTTP_404_NOT_FOUND, (
+            f'Страница `{self.url_signup}` не найдена '
+            f'{status.HTTP_404_NOT_FOUND}'
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST, (
+            f'Проверьте, что POST запрос на {self.url_signup} с невалидным '
+            f'email не создает пользователя и возвращается '
+            f'статус {status.HTTP_400_BAD_REQUEST}'
+        )
         response_json = response.json()
-        for field in valid_data.keys():
+        assert 'email' in response_json.keys(), (
+            f'Проверьте, что в POST запросе {self.url_signup} с '
+            f'невалидными данными, в ответе есть сообщение о том, '
+            f'email заполнен неправильно'
+        )
+
+        invalid_data = {
+            'email': self.valid_email,
+            'username': 'invalid_username!@#$%',
+            'first_name': self.valid_first_name,
+            'last_name': self.valid_last_name,
+            'password': self.valid_password
+        }
+        response = client.post(self.url_signup, data=invalid_data)
+        assert response.status_code != status.HTTP_404_NOT_FOUND, (
+            f'Страница `{self.url_signup}` не найдена '
+            f'{status.HTTP_404_NOT_FOUND}'
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST, (
+            f'Проверьте, что POST запрос на {self.url_signup} с невалидным '
+            f'username не создает пользователя и возвращается '
+            f'статус {status.HTTP_400_BAD_REQUEST}'
+        )
+        response_json = response.json()
+        assert 'username' in response_json.keys(), (
+            f'Проверьте, что в POST запросе {self.url_signup} с '
+            f'невалидными данными, в ответе есть сообщение о том, '
+            f'username заполнен неправильно'
+        )
+
+        invalid_data = {
+            'email': self.valid_email,
+            'username': 'fegjknvklegblembklstmblkdtnbklsdnbkldnbslfnbkflgnblkdfgnblkdfnb;kdgnb;jdgnbldnfgkb;nfdbnfgkbnjjdldfgnblkfgdnebnslbnjsdnblfgnjblfgnjbjlfgnblfnjgjnbklgnjb',
+            'first_name': 'fegjknvklegblembklstmblkdtnbklsdnbkldnbslfnbkflgnblkdfgnblkdfnb;kdgnb;jdgnbldnfgkb;nfdbnfgkbnjjdldfgnblkfgdnebnslbnjsdnblfgnjblfgnjbjlfgnblfnjgjnbklgnjb',
+            'last_name': 'fegjknvklegblembklstmblkdtnbklsdnbkldnbslfnbkflgnblkdfgnblkdfnb;kdgnb;jdgnbldnfgkb;nfdbnfgkbnjjdldfgnblkfgdnebnslbnjsdnblfgnjblfgnjbjlfgnblfnjgjnbklgnjb',
+            'password': 'fegjknvklegblembklstmblkdtnbklsdnbkldnbslfnbkflgnblkdfgnblkdfnb;kdgnb;jdgnbldnfgkb;nfdbnfgkbnjjdldfgnblkfgdnebnslbnjsdnblfgnjblfgnjbjlfgnblfnjgjnbklgnjb'
+        }
+        response = client.post(self.url_signup, data=invalid_data)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST, (
+            f'Проверьте, что POST запрос на {self.url_signup} с полями больше '
+            f'150 символов не создает пользователя и возвращается '
+            f'статус {status.HTTP_400_BAD_REQUEST}'
+        )
+        response_json = response.json()
+        invalid_fields = ['username', 'first_name', 'last_name', 'password']
+        for field in invalid_fields:
             assert field in response_json.keys(), (
-                f'Проверьте, что регистрация невозможна без поля {field}'
-            )
-            assert response.status_code == 201, (
-                f'Проверьте, что POST запрос {self.url_signup} без поля '
-                f'{field} возвращается статус {status.HTTP_400_BAD_REQUEST}'
+                f'Проверьте, что в POST запросе {self.url_signup} с '
+                f'невалидными данными, в ответе есть сообщение о том, '
+                f'какие поля заполнены неправильно'
             )
 
     @pytest.mark.django_db(transaction=True)
